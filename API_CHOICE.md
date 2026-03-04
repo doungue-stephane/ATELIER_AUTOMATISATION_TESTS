@@ -1,13 +1,22 @@
 # API Choice
 
-- Étudiant :
-- API choisie :
-- URL base :
-- Documentation officielle / README :
-- Auth : None / API Key / OAuth
+- Étudiant : doungue stephane
+- API choisie : Frankfurter
+- URL base : https://api.frankfurter.app
+- Documentation officielle / README : https://www.frankfurter.app/docs/
+- Auth : None
 - Endpoints testés :
-  - GET ...
-  - GET ...
+  - GET /latest?from=EUR
+  - GET /latest?from=EUR&to=USD
+  - GET /latest?from=EUR&to=USD&amount=10
+  - GET /latest?from=NOPE&to=USD (cas invalide)
 - Hypothèses de contrat (champs attendus, types, codes) :
+  - 200 attendu sur requêtes valides
+  - Content-Type JSON
+  - JSON contient au minimum : amount (number), base (string), date (string ISO), rates (object)
+  - rates[USD] est un nombre lorsque to=USD
+  - Requête invalide (from=NOPE) => 4xx attendu
 - Limites / rate limiting connu :
+  - Non spécifié dans l’atelier ; on limite à 1 run/min et < 20 requêtes/run
 - Risques (instabilité, downtime, CORS, etc.) :
+  - Service public (downtime possible), latence variable, changements mineurs de schéma possibles
