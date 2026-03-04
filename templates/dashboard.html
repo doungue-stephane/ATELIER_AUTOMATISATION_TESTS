@@ -1,62 +1,345 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>API Monitoring Dashboard</title>
-  </head>
-  <body>
-    <h1>API Monitoring Dashboard</h1>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>API Monitor — {{ api_name }}</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1a2e;
+      --panel2:#0c1628;
+      --border:#1b2a46;
+      --text:#e8eefc;
+      --muted:#9fb0d0;
+      --accent:#30d6c8;
+      --warn:#f0b429;
+      --bad:#ff5a6a;
+      --good:#22c55e;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background: radial-gradient(1200px 500px at 20% -10%, rgba(48,214,200,.18), transparent 60%),
+                  radial-gradient(900px 400px at 80% -15%, rgba(99,102,241,.18), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    a{color:var(--accent); text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:1200px; margin:28px auto; padding:0 18px 40px;}
+    .topbar{
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:14px; margin-bottom:18px;
+    }
+    .brand{
+      display:flex; gap:12px; align-items:flex-start;
+    }
+    .logo{
+      width:34px; height:34px; border-radius:10px;
+      background: linear-gradient(135deg, rgba(48,214,200,.95), rgba(99,102,241,.9));
+      box-shadow: var(--shadow);
+      margin-top:3px;
+    }
+    .title h1{
+      margin:0; font-size:18px; letter-spacing:.4px;
+    }
+    .title .sub{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:12px;
+      font-family:var(--mono);
+    }
+    .actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+    .btn{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color:var(--text);
+      padding:9px 12px;
+      border-radius:12px;
+      font-size:13px;
+      display:inline-flex; align-items:center; gap:8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25);
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(48,214,200,.18), rgba(99,102,241,.12));
+      border-color: rgba(48,214,200,.35);
+    }
+    .btn:hover{filter:brightness(1.06)}
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap:14px;
+      margin:16px 0 18px;
+    }
+    @media(max-width:1100px){ .grid{grid-template-columns: repeat(2, minmax(0,1fr));} }
+    @media(max-width:520px){ .grid{grid-template-columns: 1fr;} }
 
-    <p>
-      <b>API :</b> {{ api_name }} |
-      <a href="/run">Run now</a> |
-      <a href="/api/last">Last JSON</a> |
-      <a href="/health">Health</a>
-    </p>
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      padding:14px 14px 12px;
+      box-shadow: var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .card::before{
+      content:"";
+      position:absolute; inset:-2px -2px auto auto;
+      width:120px; height:120px;
+      background: radial-gradient(circle at 30% 30%, rgba(48,214,200,.20), transparent 60%);
+      transform: rotate(25deg);
+      pointer-events:none;
+    }
+    .kpi-label{
+      color:var(--muted);
+      font-size:11px;
+      letter-spacing:.6px;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+    .kpi-value{
+      font-size:26px;
+      font-weight:700;
+      display:flex; align-items:baseline; gap:8px;
+    }
+    .kpi-value small{font-size:12px; color:var(--muted); font-weight:500}
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+    }
+    .pill.good{border-color: rgba(34,197,94,.4); color: rgba(34,197,94,.95)}
+    .pill.bad{border-color: rgba(255,90,106,.45); color: rgba(255,90,106,.95)}
+    .pill.warn{border-color: rgba(240,180,41,.45); color: rgba(240,180,41,.95)}
+    .section{
+      background: rgba(255,255,255,.02);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      margin-top:14px;
+    }
+    .section-head{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:12px 14px;
+      background: rgba(0,0,0,.18);
+      border-bottom:1px solid var(--border);
+    }
+    .section-head h2{
+      margin:0;
+      font-size:13px;
+      letter-spacing:.6px;
+      text-transform:uppercase;
+      color: #cfe0ff;
+      display:flex; align-items:center; gap:8px;
+    }
+    .meta{
+      font-size:12px;
+      color:var(--muted);
+      font-family:var(--mono);
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    th, td{
+      padding:11px 14px;
+      border-bottom:1px solid rgba(27,42,70,.85);
+      vertical-align:top;
+    }
+    th{
+      text-align:left;
+      color:var(--muted);
+      font-weight:600;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.6px;
+      background: rgba(255,255,255,.02);
+    }
+    tr:hover td{background: rgba(48,214,200,.04)}
+    .mono{font-family:var(--mono)}
+    .right{text-align:right}
+    .status{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width:62px;
+      padding:4px 10px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+    }
+    .status.pass{border-color: rgba(34,197,94,.45); color: rgba(34,197,94,.95)}
+    .status.fail{border-color: rgba(255,90,106,.5); color: rgba(255,90,106,.95)}
+    .muted{color:var(--muted)}
+    .small{font-size:12px}
+    .empty{
+      padding:18px 14px;
+      color:var(--muted);
+    }
+    .footnote{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:12px;
+      font-family:var(--mono);
+    }
+  </style>
+</head>
 
-    {% if not last_run %}
-      <p>Aucun run. Clique sur <a href="/run">/run</a>.</p>
-    {% else %}
-      <h2>Dernier run</h2>
-      <ul>
-        <li><b>Timestamp:</b> {{ last_run["ts"] }}</li>
-        <li><b>Passed/Failed:</b> {{ last_run["passed"] }}/{{ last_run["failed"] }}</li>
-        <li><b>Error rate:</b> {{ last_run["error_rate"] }}</li>
-        <li><b>Latency avg/p95 (ms):</b> {{ last_run["latency_avg_ms"] }}/{{ last_run["latency_p95_ms"] }}</li>
-      </ul>
+<body>
+  <div class="wrap">
 
-      <h3>Détails des tests</h3>
-      <table border="1" cellpadding="6">
-        <tr>
-          <th>Test</th><th>Status</th><th>Latency (ms)</th><th>Details</th>
-        </tr>
-        {% for t in last_tests %}
-        <tr>
-          <td>{{ t["name"] }}</td>
-          <td>{{ t["status"] }}</td>
-          <td>{{ t["latency_ms"] }}</td>
-          <td>{{ t["details"] }}</td>
-        </tr>
-        {% endfor %}
-      </table>
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div class="title">
+          <h1>API MONITOR — {{ api_name|upper }}</h1>
+          <div class="sub">{{ base_url }} • Testing as Code • {{ total_runs }} run(s) enregistré(s)</div>
+        </div>
+      </div>
 
-      <h2>Historique (20 derniers)</h2>
-      <table border="1" cellpadding="6">
-        <tr>
-          <th>ID</th><th>Timestamp</th><th>Passed</th><th>Failed</th><th>Error rate</th><th>Avg</th><th>P95</th>
-        </tr>
-        {% for r in runs %}
-        <tr>
-          <td>{{ r["id"] }}</td>
-          <td>{{ r["ts"] }}</td>
-          <td>{{ r["passed"] }}</td>
-          <td>{{ r["failed"] }}</td>
-          <td>{{ r["error_rate"] }}</td>
-          <td>{{ r["latency_avg_ms"] }}</td>
-          <td>{{ r["latency_p95_ms"] }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    {% endif %}
-  </body>
+      <div class="actions">
+        <a class="btn" href="/health">🩺 /health</a>
+        <a class="btn" href="/api/last">⬇ Export JSON</a>
+        <a class="btn primary" href="/run">▶ Lancer un run</a>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="grid">
+      <div class="card">
+        <div class="kpi-label">Tests</div>
+        <div class="kpi-value">{{ suite_size }} <small>dans la suite</small></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi-label">Réussis</div>
+        <div class="kpi-value">{{ last_passed }} <small>dernier run</small></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi-label">Échoués</div>
+        <div class="kpi-value">{{ last_failed }} <small>dernier run</small></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi-label">Latence moy.</div>
+        <div class="kpi-value">{{ latency_avg }} <small>ms (avg)</small></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi-label">Disponibilité</div>
+        <div class="kpi-value">{{ availability }}% <small>p95 = {{ latency_p95 }} ms</small></div>
+      </div>
+    </div>
+
+    <!-- Dernier run -->
+    <div class="section">
+      <div class="section-head">
+        <h2>📋 Dernier run</h2>
+        <div class="meta">
+          {% if last_run %}
+            {{ last_run["ts"] }}
+          {% else %}
+            —
+          {% endif %}
+        </div>
+      </div>
+
+      {% if not last_run %}
+        <div class="empty">
+          Aucun run. Clique sur <a href="/run">/run</a> pour lancer le premier test.
+        </div>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th>Test</th>
+              <th>Statut</th>
+              <th class="right">Latence</th>
+              <th>Détails</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in last_tests %}
+            <tr>
+              <td>{{ t["name"] }}</td>
+              <td>
+                {% if t["status"] == "PASS" %}
+                  <span class="status pass">PASS</span>
+                {% else %}
+                  <span class="status fail">FAIL</span>
+                {% endif %}
+              </td>
+              <td class="right mono">
+                {% if t["latency_ms"] is not none %}
+                  {{ "%.0f"|format(t["latency_ms"]) }} ms
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="mono muted small">{{ t["details"] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+
+    <!-- Historique -->
+    <div class="section">
+      <div class="section-head">
+        <h2>📈 Historique des runs</h2>
+        <div class="meta">20 derniers</div>
+      </div>
+
+      {% if runs|length == 0 %}
+        <div class="empty">Aucun historique.</div>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Timestamp</th>
+              <th>Réussis/Total</th>
+              <th class="right">Disponibilité</th>
+              <th class="right">Avg ms</th>
+              <th class="right">P95 ms</th>
+              <th class="right">Err. rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in runs %}
+            <tr>
+              <td class="mono">{{ r["id"] }}</td>
+              <td class="mono">{{ r["ts"] }}</td>
+              <td class="mono">{{ r["passed"] }}/{{ (r["passed"] + r["failed"]) }}</td>
+              <td class="right mono">{{ "%.1f"|format((1 - r["error_rate"]) * 100) }}%</td>
+              <td class="right mono">{{ r["latency_avg_ms"] }}</td>
+              <td class="right mono">{{ r["latency_p95_ms"] }}</td>
+              <td class="right mono">{{ "%.1f"|format(r["error_rate"] * 100) }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+
+    <div class="footnote">
+      Astuce: programme une tâche PythonAnywhere (toutes les 5–10 min) pour remplir l’historique automatiquement.
+    </div>
+
+  </div>
+</body>
 </html>
