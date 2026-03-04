@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>API Monitoring Dashboard</title>
+  </head>
+  <body>
+    <h1>API Monitoring Dashboard</h1>
+
+    <p>
+      <b>API :</b> {{ api_name }} |
+      <a href="/run">Run now</a> |
+      <a href="/api/last">Last JSON</a> |
+      <a href="/health">Health</a>
+    </p>
+
+    {% if not last_run %}
+      <p>Aucun run. Clique sur <a href="/run">/run</a>.</p>
+    {% else %}
+      <h2>Dernier run</h2>
+      <ul>
+        <li><b>Timestamp:</b> {{ last_run["ts"] }}</li>
+        <li><b>Passed/Failed:</b> {{ last_run["passed"] }}/{{ last_run["failed"] }}</li>
+        <li><b>Error rate:</b> {{ last_run["error_rate"] }}</li>
+        <li><b>Latency avg/p95 (ms):</b> {{ last_run["latency_avg_ms"] }}/{{ last_run["latency_p95_ms"] }}</li>
+      </ul>
+
+      <h3>Détails des tests</h3>
+      <table border="1" cellpadding="6">
+        <tr>
+          <th>Test</th><th>Status</th><th>Latency (ms)</th><th>Details</th>
+        </tr>
+        {% for t in last_tests %}
+        <tr>
+          <td>{{ t["name"] }}</td>
+          <td>{{ t["status"] }}</td>
+          <td>{{ t["latency_ms"] }}</td>
+          <td>{{ t["details"] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+
+      <h2>Historique (20 derniers)</h2>
+      <table border="1" cellpadding="6">
+        <tr>
+          <th>ID</th><th>Timestamp</th><th>Passed</th><th>Failed</th><th>Error rate</th><th>Avg</th><th>P95</th>
+        </tr>
+        {% for r in runs %}
+        <tr>
+          <td>{{ r["id"] }}</td>
+          <td>{{ r["ts"] }}</td>
+          <td>{{ r["passed"] }}</td>
+          <td>{{ r["failed"] }}</td>
+          <td>{{ r["error_rate"] }}</td>
+          <td>{{ r["latency_avg_ms"] }}</td>
+          <td>{{ r["latency_p95_ms"] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  </body>
+</html>
