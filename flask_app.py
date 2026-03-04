@@ -135,11 +135,11 @@ def safe_import_runner():
 # -----------------------------
 # Routes
 # -----------------------------
-@app.get("/")
+@app.get("/dashboard")
 def consignes():
     return render_template("consignes.html")
 
-@app.get("/dashboard")
+@app.get("/")
 def dashboard():
     last, tests = get_last_run()
     runs = list_runs(20)
