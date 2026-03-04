@@ -1,5 +1,4 @@
-from flask import Flask, render_template, jsonify
-from datetime import datetime, timezone
+from flask import Flask, render_template, jsonify, redirect, url_for
 import sqlite3
 
 # -----------------------------
@@ -43,17 +42,14 @@ def init_db():
         )
         """)
 
-
 # -----------------------------
 # Sauvegarde d'un run
 # -----------------------------
 def save_run(run: dict):
-
     init_db()
 
     with sqlite3.connect(DB_PATH) as con:
         cur = con.cursor()
-
         s = run["summary"]
 
         cur.execute(
@@ -89,12 +85,10 @@ def save_run(run: dict):
                 ),
             )
 
-
 # -----------------------------
 # Dernier run
 # -----------------------------
 def get_last_run():
-
     init_db()
 
     with sqlite3.connect(DB_PATH) as con:
@@ -111,33 +105,25 @@ def get_last_run():
             "SELECT * FROM test_results WHERE run_id=? ORDER BY id ASC",
             (run["id"],),
         )
-
         tests = cur.fetchall()
 
         return run, tests
-
 
 # -----------------------------
 # Historique
 # -----------------------------
 def list_runs(limit=20):
-
     init_db()
 
     with sqlite3.connect(DB_PATH) as con:
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
-        cur.execute(
-            "SELECT * FROM runs ORDER BY id DESC LIMIT ?",
-            (limit,),
-        )
-
+        cur.execute("SELECT * FROM runs ORDER BY id DESC LIMIT ?", (limit,))
         return cur.fetchall()
 
-
 # -----------------------------
-# Import du runner
+# Import du runner (tests)
 # -----------------------------
 def safe_import_runner():
     try:
@@ -146,44 +132,31 @@ def safe_import_runner():
     except Exception as e:
         return e
 
-
 # -----------------------------
-# Page consignes
+# Routes
 # -----------------------------
 @app.get("/")
 def consignes():
     return render_template("consignes.html")
 
-
-# -----------------------------
-# Dashboard
-# -----------------------------
 @app.get("/dashboard")
 def dashboard():
-
     last, tests = get_last_run()
     runs = list_runs(20)
 
     suite_size = len(tests) if tests else 0
 
     if last:
-
         last_passed = int(last["passed"])
         last_failed = int(last["failed"])
-
         latency_avg = float(last["latency_avg_ms"])
         latency_p95 = float(last["latency_p95_ms"])
-
         availability = round((1 - float(last["error_rate"])) * 100, 1)
-
     else:
-
         last_passed = 0
         last_failed = 0
-
         latency_avg = 0
         latency_p95 = 0
-
         availability = 0
 
     return render_template(
@@ -202,100 +175,65 @@ def dashboard():
         availability=availability
     )
 
-
-# -----------------------------
-# Lancer les tests
-# -----------------------------
 @app.get("/run")
 def run_now():
-
     run_suite_or_error = safe_import_runner()
 
     if not callable(run_suite_or_error):
-
-        return jsonify(
-            {
-                "error": "runner import failed",
-                "details": str(run_suite_or_error),
-            }
-        ), 500
+        return jsonify({"error": "runner import failed", "details": str(run_suite_or_error)}), 500
 
     run = run_suite_or_error(API_NAME, BASE_URL)
-
     save_run(run)
 
-    return jsonify(run), 200
+    # ✅ IMPORTANT : on reste sur le dashboard
+    return redirect(url_for("dashboard"))
 
-
-# -----------------------------
-# Export JSON dernier run
-# -----------------------------
 @app.get("/api/last")
 def api_last():
-
     last, tests = get_last_run()
 
     if not last:
         return jsonify({"message": "no runs yet"}), 404
 
-    return jsonify(
-        {
-            "api": last["api"],
-            "timestamp": last["ts"],
-            "summary": {
-                "passed": last["passed"],
-                "failed": last["failed"],
-                "error_rate": last["error_rate"],
-                "latency_ms_avg": last["latency_avg_ms"],
-                "latency_ms_p95": last["latency_p95_ms"],
-            },
-            "tests": [
-                {
-                    "name": t["name"],
-                    "status": t["status"],
-                    "latency_ms": t["latency_ms"],
-                    "details": t["details"],
-                }
-                for t in tests
-            ],
-        }
-    )
+    return jsonify({
+        "api": last["api"],
+        "timestamp": last["ts"],
+        "summary": {
+            "passed": last["passed"],
+            "failed": last["failed"],
+            "error_rate": last["error_rate"],
+            "latency_ms_avg": last["latency_avg_ms"],
+            "latency_ms_p95": last["latency_p95_ms"],
+        },
+        "tests": [
+            {
+                "name": t["name"],
+                "status": t["status"],
+                "latency_ms": t["latency_ms"],
+                "details": t["details"],
+            }
+            for t in tests
+        ],
+    })
 
-
-# -----------------------------
-# Health check
-# -----------------------------
 @app.get("/health")
 def health():
-
     last, _ = get_last_run()
 
     if not last:
-        return jsonify(
-            {
-                "status": "DEGRADED",
-                "reason": "no runs yet",
-            }
-        )
+        return jsonify({"status": "DEGRADED", "reason": "no runs yet"}), 200
 
     status = "OK" if int(last["failed"]) == 0 else "DEGRADED"
 
-    return jsonify(
-        {
-            "status": status,
-            "last_run_ts": last["ts"],
-            "failed": last["failed"],
-            "error_rate": last["error_rate"],
-        }
-    )
-
+    return jsonify({
+        "status": status,
+        "last_run_ts": last["ts"],
+        "failed": last["failed"],
+        "error_rate": last["error_rate"],
+    }), 200
 
 # -----------------------------
-# Run local
+# Run local uniquement
 # -----------------------------
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=True
-    )
+    app.run(host="0.0.0.0", port=5000, debug=True)
